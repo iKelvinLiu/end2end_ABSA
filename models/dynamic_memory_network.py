@@ -46,87 +46,80 @@ class DynamicMemoryNetwork(object):
         self.init = tf.global_variables_initializer()
 
     def get_input_representation(self, inputs, seqlen):
-        """ Convolution seq2seq for input representation """
-        if self.input_represent_opt == "CNN":
-            if self.pos_embedding_opt is True:
-                with tf.variable_scope("input_representation", reuse=tf.AUTO_REUSE):
+        with tf.variable_scope("input_representation", reuse=tf.AUTO_REUSE):
+            """ Convolution seq2seq for input representation """
+            if self.input_represent_opt == "CNN":
+                if self.pos_embedding_opt is True:
                     position_embedding = tf.get_variable(name="pos_embedding",
                                                          shape=[self.max_sentence_len, self.global_hidden_size],
                                                          initializer=tf.random_normal_initializer(mean=0.0, stddev=0.1))
-            else:
-                position_embedding = None
-            cnn_output = conv_encode(inputs, seqlen, position_embedding, self.is_training, self.pos_embedding_opt)
-            """ outputs shape=(?, ?, 300) dtype=float32 """
-            fact_vecs = tf.reshape(cnn_output.outputs, [-1, self.max_sentence_len, self.global_hidden_size])
-            return fact_vecs
+                else:
+                    position_embedding = None
+                cnn_output = conv_encode(inputs, seqlen, position_embedding, self.is_training, self.pos_embedding_opt)
+                """ outputs shape=(?, ?, 300) dtype=float32 """
+                fact_vecs = tf.reshape(cnn_output.outputs, [-1, self.max_sentence_len, self.global_hidden_size])
+                return fact_vecs
 
-        """ Memory_set为word embedding转化之后的vector集合，context """
-        if self.input_represent_opt == "Bidirectional_GRU":
-            """Get fact (sentence) vectors via embedding, positional encoding and bi-directional GRU"""
-            forward_gru_cell = tf.contrib.rnn.GRUCell(self.global_hidden_size)
-            backward_gru_cell = tf.contrib.rnn.GRUCell(self.global_hidden_size)
-            outputs, _ = tf.nn.bidirectional_dynamic_rnn(forward_gru_cell,
-                                                         backward_gru_cell,
-                                                         inputs,
-                                                         dtype=np.float32,
-                                                         sequence_length=seqlen
-                                                         )
-            """ sum forward and backward output vectors """
-            fact_vecs = tf.reduce_sum(tf.stack(outputs), axis=0)
-            """ apply dropout """
-            fact_vecs = tf.contrib.layers.dropout(fact_vecs, keep_prob=self.global_dropout, is_training=self.is_training)
+            """ Memory_set为word embedding转化之后的vector集合，context """
+            if self.input_represent_opt == "Bidirectional_GRU":
+                """Get fact (sentence) vectors via embedding, positional encoding and bi-directional GRU"""
+                forward_gru_cell = tf.contrib.rnn.GRUCell(self.global_hidden_size)
+                backward_gru_cell = tf.contrib.rnn.GRUCell(self.global_hidden_size)
+                outputs, _ = tf.nn.bidirectional_dynamic_rnn(forward_gru_cell,
+                                                             backward_gru_cell,
+                                                             inputs,
+                                                             dtype=np.float32,
+                                                             sequence_length=seqlen
+                                                             )
+                """ sum forward and backward output vectors """
+                fact_vecs = tf.reduce_sum(tf.stack(outputs), axis=0)
+                """ apply dropout """
+                fact_vecs = tf.contrib.layers.dropout(fact_vecs, keep_prob=self.global_dropout, is_training=self.is_training)
 
-            """ shape=(?, sentence_len, embedding_number) 对于每一个样本生成hidden size的internal representation """
-            return fact_vecs
+                """ shape=(?, sentence_len, embedding_number) 对于每一个样本生成hidden size的internal representation """
+                return fact_vecs
 
-        if self.input_represent_opt == "Forward_GRU":
-            """ Forward GRU """
-            forward_gru_cell = tf.contrib.rnn.GRUCell(self.global_hidden_size)
-            outputs, _ = tf.nn.dynamic_rnn(forward_gru_cell,
-                                           inputs,
-                                           dtype=np.float32,
-                                           sequence_length=seqlen
-                                           )
-            fact_vecs = outputs
-            """ apply dropout """
-            fact_vecs = tf.contrib.layers.dropout(fact_vecs, keep_prob=self.global_dropout, is_training=self.is_training)
+            if self.input_represent_opt == "Forward_GRU":
+                """ Forward GRU """
+                forward_gru_cell = tf.contrib.rnn.GRUCell(self.global_hidden_size)
+                outputs, _ = tf.nn.dynamic_rnn(forward_gru_cell,
+                                               inputs,
+                                               dtype=np.float32,
+                                               sequence_length=seqlen
+                                               )
+                fact_vecs = outputs
+                """ apply dropout """
+                fact_vecs = tf.contrib.layers.dropout(fact_vecs, keep_prob=self.global_dropout, is_training=self.is_training)
 
-            """ shape=(?, sentence_len, embedding_number) 对于每一个样本生成hidden size的internal representation """
-            return fact_vecs
+                """ shape=(?, sentence_len, embedding_number) 对于每一个样本生成hidden size的internal representation """
+                return fact_vecs
 
     def get_question_representation(self, target_word):
-        if self.question_represent_opt == "RNN":
-            """ 需要提供question的word embedding和sequence length """
-            """ Tensor("DMN/question/rnn/while/Exit_2:0", shape=(100, 80), dtype=float32) """
-            hidden_size = self.global_hidden_size
-            questions = tf.expand_dims(target_word, 1)
-            gru_cell = tf.contrib.rnn.GRUCell(hidden_size)
-            _, q_vec = tf.nn.dynamic_rnn(gru_cell,
-                                         questions,
-                                         dtype=np.float32
-                                         )
-            return q_vec
+        with tf.variable_scope("question_representation", reuse=tf.AUTO_REUSE):
+            if self.question_represent_opt == "RNN":
+                """ 需要提供question的word embedding和sequence length """
+                """ Tensor("DMN/question/rnn/while/Exit_2:0", shape=(100, 80), dtype=float32) """
+                hidden_size = self.global_hidden_size
+                questions = tf.expand_dims(target_word, 1)
+                gru_cell = tf.contrib.rnn.GRUCell(hidden_size)
+                _, q_vec = tf.nn.dynamic_rnn(gru_cell,
+                                             questions,
+                                             dtype=np.float32
+                                             )
+                return q_vec
 
-        if self.question_represent_opt == "Direct":
-            """ shape=(?, 100) 按照word embedding直接输出 """
-            q_vec = target_word
-            return q_vec
+            if self.question_represent_opt == "Direct":
+                """ shape=(?, 100) 按照word embedding直接输出 """
+                q_vec = target_word
+                return q_vec
 
-    def get_attention(self, q_vec, prev_memory, fact_vec):
-        """Use question vector and previous memory to create scalar attention for current fact"""
-        if self.attention_method == "tanh_concat":
-            hidden_size = self.global_hidden_size
-            with tf.variable_scope("attention", reuse=tf.AUTO_REUSE):
-                features = [q_vec,
-                            fact_vec,
-                            prev_memory,
-                            #fact_vec * q_vec,
-                            #fact_vec * prev_memory,
-                            #tf.abs(fact_vec - q_vec),
-                            #tf.abs(fact_vec - prev_memory),
-                            ]
+    def get_attention(self, prev_memory, fact_vec):
+        with tf.variable_scope("attention_mechanism", reuse=tf.AUTO_REUSE):
+            """Use question vector and previous memory to create scalar attention for current fact"""
+            if self.attention_method == "tanh_concat":
+                hidden_size = self.global_hidden_size
 
-                feature_vec = tf.concat(features, 1)
+                feature_vec = tf.concat([prev_memory, fact_vec], 1)
 
                 attention = tf.contrib.layers.fully_connected(feature_vec,
                                                               hidden_size,
@@ -137,21 +130,21 @@ class DynamicMemoryNetwork(object):
                                                               1,
                                                               activation_fn=None,
                                                               reuse=tf.AUTO_REUSE, scope="fc2")
-            return attention
+                return attention
 
-        if self.attention_method == "dot_product":
-            """ fact_vec // q_vec shape = (?, 300)  attention: shape (?, 1)"""
-            attention = tf.multiply(fact_vec, prev_memory)
-            attention = tf.reduce_sum(attention, 1, keep_dims=True)
-            return attention
+            if self.attention_method == "dot_product":
+                """ fact_vec // q_vec shape = (?, 300)  attention: shape (?, 1)"""
+                attention = tf.multiply(fact_vec, prev_memory)
+                attention = tf.reduce_sum(attention, 1, keepdims=True)
+                return attention
 
-    def generate_episode(self, memory, q_vec, fact_vecs, seqlen):
-        """Generate episode by applying attention to current fact vectors through a modified GRU"""
+    def generate_episode(self, memory, fact_vecs, seqlen):
+        """Generate episode by applying attention to current fact vectors """
         hidden_size = self.global_hidden_size
         epi_attn_list = []
 
         """ Calculate each attention of facts. """
-        attentions = [tf.squeeze(self.get_attention(q_vec, memory, fv), axis=1)
+        attentions = [tf.squeeze(self.get_attention(memory, fv), axis=1)
                       for i, fv in enumerate(tf.unstack(fact_vecs, axis=1))]
 
         attentions = tf.transpose(tf.stack(attentions))
@@ -174,9 +167,10 @@ class DynamicMemoryNetwork(object):
         if self.episode_option == "Soft":
             """ DMN plus论文中提到的Soft Attention """
             """ TensorFlow的multiply支持broadcasting """
-            episode = tf.multiply(attentions, fact_vecs)
-            episode = tf.reduce_sum(episode, 1)
-            #print(episode)
+            with tf.variable_scope('Soft', reuse=tf.AUTO_REUSE):
+                episode = tf.multiply(attentions, fact_vecs)
+                episode = tf.reduce_sum(episode, 1)
+                #print(episode)
 
         if self.episode_option == "LSTM":
             """ Using conventional LSTM """
@@ -226,31 +220,26 @@ class DynamicMemoryNetwork(object):
             for i in range(num_hops):
                 """ get a new episode """
                 print('==> generating episode', i)
-                episode, attn_tmp = self.generate_episode(prev_memory, q_vec, fact_vecs, Sequence_len)
+                episode, attn_tmp = self.generate_episode(prev_memory, fact_vecs, Sequence_len)
                 infer_attn_list.append(attn_tmp)
                 """ untied weights for memory update """
                 with tf.variable_scope("hop_%d" % i):
-                    prev_memory = tf.layers.dense(tf.concat([prev_memory, episode, q_vec], 1),
-                                                  hidden_size,
-                                                  activation=tf.nn.relu)
-
+                    prev_memory = tf.layers.dense(tf.concat([episode, q_vec], 1), hidden_size)
             output = prev_memory
 
         """ pass memory module output through linear answer module """
         with tf.variable_scope("answer", initializer=tf.contrib.layers.xavier_initializer()):
-            output = self.add_answer_module(output, q_vec)
+            output = self.add_answer_module(output)
 
         return output, infer_attn_list
 
-    def add_answer_module(self, rnn_output, q_vec):
+    def add_answer_module(self, rnn_output):
         """ Linear softmax answer module """
         drop_out_placeholder = self.global_dropout
         rnn_output = tf.contrib.layers.dropout(rnn_output, keep_prob=drop_out_placeholder, is_training=self.is_training)
 
         if self.answer_opt == "full_connect":
             """ Using dense layer to control dimension """
-            # output = tf.layers.dense(tf.concat([rnn_output, q_vec], 1), num_class, activation=None)
-            # output = tf.layers.dense(rnn_output - q_vec, num_class, activation=None)
             output = tf.layers.dense(rnn_output, self.num_classes, activation=None)
 
         if self.answer_opt == "matrix_mul":
@@ -267,8 +256,9 @@ class DynamicMemoryNetwork(object):
         l2 = self.l2_regularization
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf.cast(Y, tf.float32), logits=prob))
         for v in tf.trainable_variables():
+            print(v.name.lower())
             if 'bias' not in v.name.lower():
-                print("adding l2 regularization", v.name.lower())
+                # print("adding l2 regularization", v.name.lower())
                 loss += l2 * tf.nn.l2_loss(v)
         return loss
 
@@ -284,9 +274,4 @@ class DynamicMemoryNetwork(object):
 
         train_output = opt.apply_gradients(gvs)
         return train_output
-
-
-
-
-
 

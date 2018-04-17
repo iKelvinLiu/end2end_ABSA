@@ -10,7 +10,7 @@ def create_attention_figure(source_words, target_words, source_len, target_len, 
         color_map = plt.cm.Blues
     else:
         color_map = plt.cm.Reds
-    fig = plt.figure(figsize=(25, 8))
+    fig = plt.figure(figsize=(25, 10))
     plt.imshow(
           X=attention_score[:target_len, :source_len],
           interpolation="nearest",
@@ -18,8 +18,8 @@ def create_attention_figure(source_words, target_words, source_len, target_len, 
           vmin=0,
           vmax=0.2)
     plt.colorbar(shrink=.30)
-    plt.xticks(np.arange(source_len), source_words)
-    plt.yticks(np.arange(target_len), target_words)
+    plt.xticks(np.arange(source_len), source_words, rotation=60, fontsize=18)
+    plt.yticks(np.arange(target_len), target_words, fontsize=18)
 
     fig.tight_layout()
     return fig
@@ -39,7 +39,7 @@ def batch_plot_attention(hop, attentions, source_file, index, epoch, path, predi
                                 attention_score=np.expand_dims(attentions[hop][0][i], axis=0),
                                 color=predict[i],
                                 )
-        save_name = path + "\\attention_plot" + "_epoch" + str(epoch) + "_hop" + str(hop) + "_sample" + str(i)
+        save_name = path + "//attention_plot" + "_epoch" + str(epoch) + "_hop" + str(hop) + "_sample" + str(i)
         plt.savefig(save_name)
         plt.close()
 
