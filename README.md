@@ -1,10 +1,7 @@
 ## Introduction
-Attention-based aspect-level sentiment classification(demo version).  
-Implemented by tensorflow.  
-Revised for analyzing short text documents.  
+Attention-based aspect-level sentiment classification(demo version). Implemented by tensorflow.  
+Revised for analyzing short text documents.
 
-
-## How to use
 Download the git project and run the python script: aspect_level_sentiment_analysis_XXXXXXXX.py
 
 ## Version Requirements
