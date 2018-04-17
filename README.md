@@ -7,7 +7,6 @@ Revised for analyzing short text documents.
 ## How to use
 Download the git project and run the python script: aspect_level_sentiment_analysis_XXXXXXXX.py
 
-
 ## Version Requirements
 1. Tensorflow 1.4+
 2. Python 3.x
@@ -25,6 +24,14 @@ Download the git project and run the python script: aspect_level_sentiment_analy
 1. Simplifying the implemetation from original dynamic memory network in reference[1].  
 2. Combining some parts of reference[2].  
 3. Adding simple attention visualization.  
+  
+
+## Layout
+<img src="./plot/attention_based_layout.jpg" width = "600" height = "" alt="pic01" align=center />
+
+
+## Attention Plot  
+![pic02](./plot/attention_plot_epoch3_sample5.png)
 
 
 ## References
